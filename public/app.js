@@ -1,5 +1,7 @@
 const state = {
-  selectedSkills: new Set()
+  selectedSkills: new Set(),
+  page: 1,
+  totalPages: 1
 };
 
 const cvFile = document.getElementById("cvFile");
@@ -16,6 +18,20 @@ const delayMs = document.getElementById("delayMs");
 const startBtn = document.getElementById("startBtn");
 const runMessage = document.getElementById("runMessage");
 const applicationsBody = document.getElementById("applicationsBody");
+const statTotal = document.getElementById("statTotal");
+const statSuccess = document.getElementById("statSuccess");
+const statFailed = document.getElementById("statFailed");
+const statPending = document.getElementById("statPending");
+const statLetter = document.getElementById("statLetter");
+const searchQuery = document.getElementById("searchQuery");
+const statusFilter = document.getElementById("statusFilter");
+const platformFilter = document.getElementById("platformFilter");
+const cityFilter = document.getElementById("cityFilter");
+const pageSize = document.getElementById("pageSize");
+const prevPageBtn = document.getElementById("prevPageBtn");
+const nextPageBtn = document.getElementById("nextPageBtn");
+const pageInfo = document.getElementById("pageInfo");
+const chart = document.getElementById("chart");
 
 function showMessage(msg) {
   runMessage.textContent = msg;
@@ -80,10 +96,47 @@ async function uploadLetter() {
   showMessage("Lettre enregistrée.");
 }
 
+function renderChart(byDay = []) {
+  chart.innerHTML = "";
+  const max = Math.max(1, ...byDay.map((x) => x.count));
+  byDay.forEach((row) => {
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    bar.style.height = `${Math.max(8, Math.round((row.count / max) * 100))}px`;
+    bar.title = `${row.day}: ${row.count}`;
+    const label = document.createElement("span");
+    label.className = "bar-label";
+    label.textContent = row.day.slice(5);
+    bar.appendChild(label);
+    chart.appendChild(bar);
+  });
+}
+
+function refillSelect(select, values) {
+  const current = select.value;
+  const first = select.querySelector("option")?.outerHTML || "";
+  select.innerHTML = first;
+  values.forEach((v) => {
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = v;
+    select.appendChild(opt);
+  });
+  if ([...select.options].some((o) => o.value === current)) select.value = current;
+}
+
 async function refreshApplications() {
-  const res = await fetch("/api/applications");
+  const params = new URLSearchParams({
+    page: String(state.page),
+    pageSize: pageSize.value,
+    q: searchQuery.value.trim(),
+    status: statusFilter.value,
+    platform: platformFilter.value,
+    city: cityFilter.value
+  });
+  const res = await fetch(`/api/dashboard?${params.toString()}`);
   const data = await res.json();
-  const apps = data.applications || [];
+  const apps = data.items || [];
 
   applicationsBody.innerHTML = "";
   apps.forEach((app) => {
@@ -98,6 +151,21 @@ async function refreshApplications() {
     `;
     applicationsBody.appendChild(tr);
   });
+
+  statTotal.textContent = String(data.summary?.total || 0);
+  statSuccess.textContent = String(data.summary?.success || 0);
+  statFailed.textContent = String(data.summary?.failed || 0);
+  statPending.textContent = String(data.summary?.pending || 0);
+  statLetter.textContent = String(data.summary?.withLetter || 0);
+
+  refillSelect(platformFilter, data.filters?.platforms || []);
+  refillSelect(cityFilter, data.filters?.cities || []);
+  renderChart(data.byDay || []);
+
+  state.totalPages = data.totalPages || 1;
+  pageInfo.textContent = `Page ${data.page || 1} / ${state.totalPages}`;
+  prevPageBtn.disabled = state.page <= 1;
+  nextPageBtn.disabled = state.page >= state.totalPages;
 }
 
 async function startRun() {
@@ -121,6 +189,7 @@ async function startRun() {
     if (!res.ok) throw new Error(data.error || "Erreur lancement.");
 
     showMessage(`Terminé: ${data.appliedCount} candidature(s) traitée(s).`);
+    state.page = 1;
     await refreshApplications();
   } catch (error) {
     showMessage(error.message);
@@ -133,5 +202,23 @@ uploadCvBtn.addEventListener("click", uploadCv);
 saveSkillsBtn.addEventListener("click", saveSkills);
 uploadLetterBtn.addEventListener("click", uploadLetter);
 startBtn.addEventListener("click", startRun);
+searchQuery.addEventListener("input", () => {
+  state.page = 1;
+  refreshApplications();
+});
+[statusFilter, platformFilter, cityFilter, pageSize].forEach((el) => {
+  el.addEventListener("change", () => {
+    state.page = 1;
+    refreshApplications();
+  });
+});
+prevPageBtn.addEventListener("click", () => {
+  state.page = Math.max(1, state.page - 1);
+  refreshApplications();
+});
+nextPageBtn.addEventListener("click", () => {
+  state.page = Math.min(state.totalPages, state.page + 1);
+  refreshApplications();
+});
 
 refreshApplications();

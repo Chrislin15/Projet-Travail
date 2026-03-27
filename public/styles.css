@@ -127,9 +127,84 @@ td {
   margin-bottom: 10px;
 }
 
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.stat {
+  background: #f6f8fe;
+  border: 1px solid #dde3f1;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.stat span {
+  display: block;
+  font-size: 12px;
+  color: #5a647a;
+}
+
+.stat strong {
+  font-size: 24px;
+}
+
+.dashboard-filters {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  min-height: 120px;
+  border: 1px solid #e4e8f1;
+  border-radius: 10px;
+  padding: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+}
+
+.bar {
+  width: 28px;
+  background: #3d67ff;
+  border-radius: 6px 6px 0 0;
+  position: relative;
+}
+
+.bar-label {
+  position: absolute;
+  bottom: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #5a647a;
+  white-space: nowrap;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pager button {
+  width: auto;
+  margin: 0;
+}
+
 @media (max-width: 960px) {
   .grid,
-  .search-grid {
+  .search-grid,
+  .stats-grid,
+  .dashboard-filters {
     grid-template-columns: 1fr;
   }
 }

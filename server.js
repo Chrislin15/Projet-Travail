@@ -8,6 +8,8 @@ const fs = require("fs");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const upload = multer({ storage: multer.memoryStorage() });
+const DATA_DIR = path.join(__dirname, "data");
+const APPLICATIONS_FILE = path.join(DATA_DIR, "applications.json");
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -22,6 +24,34 @@ const state = {
   applications: [],
   processedAdKeys: new Set()
 };
+
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function persistApplications() {
+  ensureDataDir();
+  fs.writeFileSync(APPLICATIONS_FILE, JSON.stringify(state.applications, null, 2), "utf8");
+}
+
+function rebuildProcessedKeys() {
+  state.processedAdKeys = new Set(
+    state.applications.map((a) => `${a.company}-${a.title}-${a.city}-${a.platform}`.toLowerCase())
+  );
+}
+
+function loadPersistedApplications() {
+  ensureDataDir();
+  if (!fs.existsSync(APPLICATIONS_FILE)) return;
+  try {
+    const raw = fs.readFileSync(APPLICATIONS_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    state.applications = Array.isArray(parsed) ? parsed : [];
+    rebuildProcessedKeys();
+  } catch (error) {
+    console.error("Impossible de charger les candidatures persistées.", error.message);
+  }
+}
 
 const skillCatalog = [
   "JavaScript",
@@ -210,6 +240,7 @@ async function applyToOffer(offer, profile, delayMs) {
     platform: offer.platform
   };
   state.applications.unshift(item);
+  persistApplications();
 
   const needsLetter = !!offer.requiresLetter;
   const hasLetter = !!profile.letter;
@@ -235,6 +266,7 @@ async function applyToOffer(offer, profile, delayMs) {
     item.status = "❌ Échec";
     item.error = error.message;
   }
+  persistApplications();
 
   return item;
 }
@@ -332,6 +364,73 @@ app.get("/api/applications", (req, res) => {
   res.json({ applications: state.applications });
 });
 
+app.get("/api/dashboard", (req, res) => {
+  const status = (req.query.status || "").toString().trim();
+  const platform = (req.query.platform || "").toString().trim();
+  const city = (req.query.city || "").toString().trim();
+  const q = (req.query.q || "").toString().trim().toLowerCase();
+  const page = Math.max(1, Number(req.query.page || 1));
+  const pageSize = Math.min(50, Math.max(1, Number(req.query.pageSize || 10)));
+
+  const filtered = state.applications.filter((a) => {
+    const statusOk = !status || a.status === status;
+    const platformOk = !platform || a.platform === platform;
+    const cityOk = !city || normalizeText(a.city).includes(normalizeText(city));
+    const queryOk =
+      !q ||
+      a.company.toLowerCase().includes(q) ||
+      a.title.toLowerCase().includes(q) ||
+      a.platform.toLowerCase().includes(q) ||
+      a.city.toLowerCase().includes(q);
+    return statusOk && platformOk && cityOk && queryOk;
+  });
+
+  const start = (page - 1) * pageSize;
+  const items = filtered.slice(start, start + pageSize);
+
+  const statusCounts = {
+    "✅ Postulé": 0,
+    "⏳ En cours": 0,
+    "❌ Échec": 0,
+    "📎 Lettre envoyée": 0
+  };
+
+  state.applications.forEach((a) => {
+    if (statusCounts[a.status] !== undefined) statusCounts[a.status] += 1;
+  });
+
+  const byDayMap = new Map();
+  state.applications.forEach((a) => {
+    const day = new Date(a.date).toISOString().slice(0, 10);
+    byDayMap.set(day, (byDayMap.get(day) || 0) + 1);
+  });
+  const byDay = [...byDayMap.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .slice(-14)
+    .map(([day, count]) => ({ day, count }));
+
+  const platforms = [...new Set(state.applications.map((a) => a.platform))].sort();
+  const cities = [...new Set(state.applications.map((a) => a.city))].sort();
+
+  res.json({
+    items,
+    page,
+    pageSize,
+    total: filtered.length,
+    totalPages: Math.max(1, Math.ceil(filtered.length / pageSize)),
+    summary: {
+      total: state.applications.length,
+      success: statusCounts["✅ Postulé"] + statusCounts["📎 Lettre envoyée"],
+      failed: statusCounts["❌ Échec"],
+      pending: statusCounts["⏳ En cours"],
+      withLetter: statusCounts["📎 Lettre envoyée"]
+    },
+    statusCounts,
+    byDay,
+    filters: { platforms, cities }
+  });
+});
+
 app.get("/api/applications/export.csv", (req, res) => {
   const records = state.applications.map((a) => ({
     entreprise: a.company,
@@ -353,6 +452,8 @@ app.get("*", (req, res) => {
   if (fs.existsSync(indexPath)) return res.sendFile(indexPath);
   return res.status(404).send("UI non trouvée");
 });
+
+loadPersistedApplications();
 
 app.listen(PORT, () => {
   console.log(`Serveur lancé sur http://localhost:${PORT}`);

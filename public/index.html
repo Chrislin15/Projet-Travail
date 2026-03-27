@@ -76,6 +76,37 @@
       <section class="card">
         <h2>3. Tableau de bord</h2>
         <a href="/api/applications/export.csv" class="export-link">Exporter CSV</a>
+        <div class="stats-grid">
+          <div class="stat"><span>Total</span><strong id="statTotal">0</strong></div>
+          <div class="stat"><span>Succès</span><strong id="statSuccess">0</strong></div>
+          <div class="stat"><span>Échecs</span><strong id="statFailed">0</strong></div>
+          <div class="stat"><span>En cours</span><strong id="statPending">0</strong></div>
+          <div class="stat"><span>Lettres envoyées</span><strong id="statLetter">0</strong></div>
+        </div>
+
+        <div class="dashboard-filters">
+          <input id="searchQuery" type="text" placeholder="Recherche entreprise, poste, ville..." />
+          <select id="statusFilter">
+            <option value="">Tous statuts</option>
+            <option>✅ Postulé</option>
+            <option>⏳ En cours</option>
+            <option>❌ Échec</option>
+            <option>📎 Lettre envoyée</option>
+          </select>
+          <select id="platformFilter">
+            <option value="">Toutes plateformes</option>
+          </select>
+          <select id="cityFilter">
+            <option value="">Toutes villes</option>
+          </select>
+          <select id="pageSize">
+            <option value="5">5 / page</option>
+            <option value="10" selected>10 / page</option>
+            <option value="20">20 / page</option>
+          </select>
+        </div>
+
+        <div id="chart" class="chart"></div>
         <table>
           <thead>
             <tr>
@@ -89,6 +120,11 @@
           </thead>
           <tbody id="applicationsBody"></tbody>
         </table>
+        <div class="pager">
+          <button id="prevPageBtn">Précédent</button>
+          <span id="pageInfo">Page 1 / 1</span>
+          <button id="nextPageBtn">Suivant</button>
+        </div>
       </section>
     </main>
 
