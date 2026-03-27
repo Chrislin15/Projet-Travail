@@ -54,27 +54,70 @@ function loadPersistedApplications() {
 }
 
 const skillCatalog = [
+  // Web / Software engineering
   "JavaScript",
   "TypeScript",
   "Node.js",
   "React",
   "Vue.js",
   "Angular",
+  "Next.js",
+  "Nuxt.js",
+  "Express",
+  "NestJS",
   "Python",
   "Java",
   "C#",
   "PHP",
+  "Go",
+  "Scala",
   "SQL",
   "PostgreSQL",
+  "MySQL",
   "MongoDB",
-  "Docker",
-  "Kubernetes",
-  "AWS",
-  "Azure",
+  "Redis",
+  "Elasticsearch",
+  "REST API",
+  "GraphQL",
+  "Microservices",
+  "System Design",
   "Git",
   "CI/CD",
-  "REST API",
-  "GraphQL"
+  "Docker",
+  "Kubernetes",
+  "Terraform",
+  "AWS",
+  "Azure",
+  "GCP",
+  // Data engineering / analytics
+  "Data Engineering",
+  "Data Analyst",
+  "Analytics Engineer",
+  "Big Data",
+  "Data Modeling",
+  "Data Warehousing",
+  "ETL",
+  "ELT",
+  "Apache Airflow",
+  "dbt",
+  "Apache Spark",
+  "PySpark",
+  "Kafka",
+  "Snowflake",
+  "BigQuery",
+  "Redshift",
+  "Databricks",
+  "Looker",
+  "Power BI",
+  "Tableau",
+  "Google Analytics",
+  "A/B Testing",
+  "Statistics",
+  "Machine Learning",
+  "Pandas",
+  "NumPy",
+  "scikit-learn",
+  "MLOps"
 ];
 
 const titleAliases = {
@@ -88,12 +131,38 @@ const titleAliases = {
 };
 
 const platformEngines = {
-  linkedin: { label: "LinkedIn Jobs" },
-  indeed: { label: "Indeed" },
-  wttj: { label: "Welcome to the Jungle" },
-  glassdoor: { label: "Glassdoor" },
-  monster: { label: "Monster" },
-  hellowork: { label: "HelloWork" }
+  linkedin: {
+    label: "LinkedIn Jobs",
+    legalSearchMode: "official_api",
+    legalApplyMode: "manual_or_partner",
+    apiKeyEnv: "LINKEDIN_JOBS_API_KEY"
+  },
+  indeed: {
+    label: "Indeed",
+    legalSearchMode: "official_api",
+    legalApplyMode: "manual_or_partner",
+    apiKeyEnv: "INDEED_PUBLISHER_API_KEY"
+  },
+  wttj: {
+    label: "Welcome to the Jungle",
+    legalSearchMode: "allowed_fetch",
+    legalApplyMode: "standardized_form_automation"
+  },
+  glassdoor: {
+    label: "Glassdoor",
+    legalSearchMode: "manual_or_partner",
+    legalApplyMode: "manual_only"
+  },
+  monster: {
+    label: "Monster",
+    legalSearchMode: "manual_or_partner",
+    legalApplyMode: "manual_only"
+  },
+  hellowork: {
+    label: "HelloWork",
+    legalSearchMode: "manual_or_partner",
+    legalApplyMode: "manual_only"
+  }
 };
 
 function sleep(ms) {
@@ -225,7 +294,43 @@ async function scrapeOffers(platformKey, title, location) {
   return filtered;
 }
 
-async function applyToOffer(offer, profile, delayMs) {
+function platformSupportsAutomation(platformKey) {
+  const engine = platformEngines[platformKey];
+  return engine && engine.legalApplyMode === "standardized_form_automation";
+}
+
+async function searchOffersUsingOfficialApi(platformKey, title, location) {
+  const engine = platformEngines[platformKey];
+  if (!engine || engine.legalSearchMode !== "official_api") return [];
+  const apiKey = process.env[engine.apiKeyEnv];
+  if (!apiKey) return [];
+  // Intégration API réelle à compléter selon les contrats/SDK officiels.
+  return [];
+}
+
+async function collectOffersLegally(platformKey, title, location) {
+  const engine = platformEngines[platformKey];
+  if (!engine) return { offers: [], note: "Plateforme inconnue" };
+
+  if (engine.legalSearchMode === "official_api") {
+    const offers = await searchOffersUsingOfficialApi(platformKey, title, location);
+    if (offers.length > 0) {
+      return { offers, note: `Recherche via API officielle ${engine.label}` };
+    }
+    return {
+      offers: await scrapeOffers(platformKey, title, location),
+      note: `API officielle ${engine.label} non configurée, fallback démo`
+    };
+  }
+
+  if (engine.legalSearchMode === "allowed_fetch") {
+    return { offers: await scrapeOffers(platformKey, title, location), note: "Recherche autorisée" };
+  }
+
+  return { offers: [], note: `${engine.label} ignoré: utiliser API partenaire ou candidature manuelle` };
+}
+
+async function applyToOffer(offer, profile, delayMs, platformKey) {
   await sleep(delayMs);
 
   const appId = `${offer.platform}-${offer.company}-${offer.title}-${offer.city}`.toLowerCase();
@@ -248,7 +353,7 @@ async function applyToOffer(offer, profile, delayMs) {
 
   const enableRealAutomation = process.env.ENABLE_REAL_AUTOMATION === "true";
   try {
-    if (enableRealAutomation) {
+    if (enableRealAutomation && platformSupportsAutomation(platformKey)) {
       const { chromium } = require("playwright");
       const browser = await chromium.launch({ headless: true });
       const page = await browser.newPage();
@@ -257,7 +362,10 @@ async function applyToOffer(offer, profile, delayMs) {
       await browser.close();
     }
 
-    if (canSendLetter) {
+    if (!platformSupportsAutomation(platformKey)) {
+      item.status = "⏳ En cours";
+      item.note = "Automatisation non autorisée légalement sur cette plateforme.";
+    } else if (canSendLetter) {
       item.status = "📎 Lettre envoyée";
     } else {
       item.status = "✅ Postulé";
@@ -341,14 +449,16 @@ app.post("/api/search/start", async (req, res) => {
   }
 
   const runResults = [];
+  const legalNotes = [];
   for (const platformKey of platforms) {
-    const offers = await scrapeOffers(platformKey, title, location);
+    const { offers, note } = await collectOffersLegally(platformKey, title, location);
+    legalNotes.push({ platform: platformEngines[platformKey]?.label || platformKey, note });
     for (const offer of offers) {
       const adKey = `${offer.company}-${offer.title}-${offer.city}-${offer.platform}`.toLowerCase();
       if (state.processedAdKeys.has(adKey)) continue;
       state.processedAdKeys.add(adKey);
 
-      const result = await applyToOffer(offer, profile, delayMs);
+      const result = await applyToOffer(offer, profile, delayMs, platformKey);
       runResults.push(result);
     }
   }
@@ -356,8 +466,13 @@ app.post("/api/search/start", async (req, res) => {
   return res.json({
     ok: true,
     appliedCount: runResults.length,
-    applications: runResults
+    applications: runResults,
+    legalNotes
   });
+});
+
+app.get("/api/skills", (req, res) => {
+  res.json({ skillCatalog });
 });
 
 app.get("/api/applications", (req, res) => {

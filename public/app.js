@@ -1,13 +1,15 @@
 const state = {
   selectedSkills: new Set(),
   page: 1,
-  totalPages: 1
+  totalPages: 1,
+  allSkills: []
 };
 
 const cvFile = document.getElementById("cvFile");
 const uploadCvBtn = document.getElementById("uploadCvBtn");
 const cvOutput = document.getElementById("cvOutput");
 const skillsTags = document.getElementById("skillsTags");
+const skillsSearch = document.getElementById("skillsSearch");
 const saveSkillsBtn = document.getElementById("saveSkillsBtn");
 const letterFile = document.getElementById("letterFile");
 const letterText = document.getElementById("letterText");
@@ -52,6 +54,19 @@ function renderSkills(skills = []) {
   });
 }
 
+function filterAndRenderSkills() {
+  const query = (skillsSearch.value || "").trim().toLowerCase();
+  const filtered = state.allSkills.filter((skill) => skill.toLowerCase().includes(query));
+  renderSkills(filtered);
+}
+
+async function loadSkillCatalog() {
+  const res = await fetch("/api/skills");
+  const data = await res.json();
+  state.allSkills = data.skillCatalog || [];
+  filterAndRenderSkills();
+}
+
 async function uploadCv() {
   const file = cvFile.files?.[0];
   if (!file) return showMessage("Sélectionne un CV PDF.");
@@ -65,7 +80,8 @@ async function uploadCv() {
 
   const extracted = data.extracted;
   extracted.skills.forEach((s) => state.selectedSkills.add(s));
-  renderSkills(data.skillCatalog || []);
+  state.allSkills = data.skillCatalog || state.allSkills;
+  filterAndRenderSkills();
   cvOutput.textContent = JSON.stringify(extracted, null, 2);
   showMessage("CV extrait avec succès.");
 }
@@ -188,7 +204,10 @@ async function startRun() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Erreur lancement.");
 
-    showMessage(`Terminé: ${data.appliedCount} candidature(s) traitée(s).`);
+    const notes = Array.isArray(data.legalNotes)
+      ? ` | ${data.legalNotes.map((n) => `${n.platform}: ${n.note}`).join(" ; ")}`
+      : "";
+    showMessage(`Terminé: ${data.appliedCount} candidature(s) traitée(s).${notes}`);
     state.page = 1;
     await refreshApplications();
   } catch (error) {
@@ -202,6 +221,7 @@ uploadCvBtn.addEventListener("click", uploadCv);
 saveSkillsBtn.addEventListener("click", saveSkills);
 uploadLetterBtn.addEventListener("click", uploadLetter);
 startBtn.addEventListener("click", startRun);
+skillsSearch.addEventListener("input", filterAndRenderSkills);
 searchQuery.addEventListener("input", () => {
   state.page = 1;
   refreshApplications();
@@ -221,4 +241,5 @@ nextPageBtn.addEventListener("click", () => {
   refreshApplications();
 });
 
+loadSkillCatalog();
 refreshApplications();

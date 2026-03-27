@@ -28,7 +28,11 @@ Puis ouvrir [http://localhost:3000](http://localhost:3000).
 
 ## Notes techniques
 
-- Le scraping est fourni sous forme de moteur simulé (`scrapeOffers`) prêt à être branché à des connecteurs réels.
+- Le moteur utilise une approche légale par défaut :
+  - APIs officielles quand disponibles (ex: LinkedIn Jobs API, Indeed Publisher API),
+  - automatisation uniquement sur plateformes autorisées et formulaires standardisés (ex: Welcome to the Jungle),
+  - les autres plateformes restent en mode manuel/partenaire.
+- Le scraping présent dans le repo est un moteur de démo/fallback (`scrapeOffers`) pour faciliter les tests.
 - L'automatisation Playwright est activable avec la variable d'environnement:
 
 ```bash
@@ -36,6 +40,7 @@ ENABLE_REAL_AUTOMATION=true
 ```
 
 - La lettre de motivation est envoyée uniquement si l'offre indique qu'elle est requise.
+- La liste des compétences est volontairement large, incluant les métiers data (Data Engineer, Data Analyst, Analytics Engineer, dbt, Airflow, Spark, etc.).
 
 ## Déploiement (Render)
 
