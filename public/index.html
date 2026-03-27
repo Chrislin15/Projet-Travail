@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Candidature Automatique</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Application de candidature automatique</h1>
+
+      <section class="card">
+        <h2>1. Configuration du profil</h2>
+        <div class="grid">
+          <div>
+            <label for="cvFile">Upload CV (PDF)</label>
+            <input id="cvFile" type="file" accept="application/pdf" />
+            <button id="uploadCvBtn">Extraire les informations</button>
+            <pre id="cvOutput" class="output"></pre>
+          </div>
+
+          <div>
+            <label>Compétences (tags cliquables)</label>
+            <div id="skillsTags" class="tags"></div>
+            <button id="saveSkillsBtn">Enregistrer compétences</button>
+          </div>
+        </div>
+
+        <div class="letter-box">
+          <label for="letterFile">Upload lettre (PDF ou texte)</label>
+          <input id="letterFile" type="file" accept=".pdf,.txt,text/plain,application/pdf" />
+          <label for="letterText">Ou colle la lettre ci-dessous</label>
+          <textarea id="letterText" rows="7" placeholder="Colle ta lettre de motivation ici..."></textarea>
+          <button id="uploadLetterBtn">Enregistrer la lettre</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>2. Paramètres de recherche</h2>
+        <div class="search-grid">
+          <label>
+            Intitulé du poste
+            <input id="jobTitle" type="text" placeholder="Développeur Full-Stack" />
+          </label>
+
+          <label>
+            Zone géographique
+            <select id="location">
+              <option value="Île-de-France">Île-de-France</option>
+              <option value="Lyon">Lyon</option>
+              <option value="Remote">Remote</option>
+            </select>
+          </label>
+
+          <label>
+            Délai entre candidatures (ms)
+            <input id="delayMs" type="number" value="3000" min="1000" step="500" />
+          </label>
+        </div>
+
+        <fieldset class="platforms">
+          <legend>Plateformes cibles</legend>
+          <label><input type="checkbox" value="linkedin" checked /> LinkedIn Jobs</label>
+          <label><input type="checkbox" value="indeed" checked /> Indeed</label>
+          <label><input type="checkbox" value="wttj" checked /> Welcome to the Jungle</label>
+          <label><input type="checkbox" value="glassdoor" checked /> Glassdoor</label>
+          <label><input type="checkbox" value="monster" checked /> Monster</label>
+          <label><input type="checkbox" value="hellowork" checked /> HelloWork</label>
+        </fieldset>
+
+        <button id="startBtn" class="primary">Lancer les candidatures</button>
+        <p id="runMessage"></p>
+      </section>
+
+      <section class="card">
+        <h2>3. Tableau de bord</h2>
+        <a href="/api/applications/export.csv" class="export-link">Exporter CSV</a>
+        <table>
+          <thead>
+            <tr>
+              <th>Entreprise</th>
+              <th>Poste</th>
+              <th>Ville</th>
+              <th>Date</th>
+              <th>Statut</th>
+              <th>Plateforme</th>
+            </tr>
+          </thead>
+          <tbody id="applicationsBody"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

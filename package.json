@@ -1,0 +1,17 @@
+{
+  "name": "auto-candidatures-app",
+  "version": "1.0.0",
+  "description": "Application full-stack de candidature automatique",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "csv-stringify": "^6.5.2",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.2",
+    "pdf-parse": "^1.1.1",
+    "playwright": "^1.53.1"
+  }
+}
